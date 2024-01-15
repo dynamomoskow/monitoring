@@ -1,0 +1,17 @@
+- name: Install node exporter
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Install node exporter
+      ansible.builtin.import_role:
+        name: 'install_node_exporter'
+
+- name: Install prometheus
+  hosts: prometheus
+  become: yes    
+
+  tasks:
+    - name: Install prometheus
+      ansible.builtin.import_role:
+        name: 'install_prometheus'  
