@@ -14,4 +14,13 @@
   tasks:
     - name: Install prometheus
       ansible.builtin.import_role:
-        name: 'install_prometheus'  
+        name: 'install_prometheus'
+
+- name: Install grafana
+  hosts: grafana
+  become: yes    
+
+  tasks:
+    - name: Install grafana
+      ansible.builtin.import_role:
+        name: 'install_grafana'  

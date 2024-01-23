@@ -1,0 +1,82 @@
+---
+- name: check if grafana exist
+  stat: 
+    path: "{{ grafana_bin }}"
+  register: __check_grafana_present
+
+- name: create grafana user
+  user:
+    name: "{{ grafana_user }}"
+    append: true
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: false
+
+- name: create grafana config dir
+  file:
+    path: "{{ grafana_dir_conf }}"
+    state: directory
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+
+- name: Копирование архива на сервер
+  copy:
+    src: /home/max/Загрузки/grafana-enterprise-10.2.3.linux-amd64.tar.gz
+    dest: /tmp/
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: 0755
+
+- name: download and unzip grafana if not exist
+  unarchive:
+    src: /tmp/grafana-enterprise-10.2.3.linux-amd64.tar.gz
+    dest: /tmp/
+    remote_src: yes
+    validate_certs: no
+  when: __check_grafana_present.stat.exists == false
+
+- name: move the binary to the final destination
+  copy:
+    src: "/tmp/grafana-v10.2.3"
+    dest: "{{ grafana_bin }}"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: 0755
+    remote_src: yes
+  when: __check_grafana_present.stat.exists == false
+
+# - name: clean
+#   file:
+#     path: /tmp/grafana-v10.2.3/
+#     state: absent
+
+- name: install service
+  template:
+    src: grafana-server.service.j2
+    dest: /etc/systemd/system/grafana-server.service
+    owner: root
+    group: root
+    mode: 0755
+  notify: reload_daemon_and_restart_grafana
+
+- name: start service grafana-server
+  systemd:
+    name: grafana-server
+    state: started
+    enabled: yes
+
+- name: wait for service up
+  uri:
+    url: "http://192.168.1.68:3000"
+    status_code: 200
+  register: __result
+  until: __result.status == 200
+  retries: 120
+  delay: 1
+
+- name: reload_daemon_and_restart_grafana
+  systemd:
+    name: grafana-server
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

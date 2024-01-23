@@ -1,0 +1,13 @@
+[Unit]
+Description=Grafana
+After=network-online.target
+
+[Service]
+User=grafana
+Group=grafana
+Type=simple
+ExecStart=/usr/local/bin/grafana/grafana-v10.2.3/bin/grafana-server
+[Install]
+WantedBy=multi-user.target
+
+

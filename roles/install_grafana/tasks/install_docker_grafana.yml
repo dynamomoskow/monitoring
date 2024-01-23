@@ -1,0 +1,83 @@
+---
+- name: install dependencies
+  apt:
+    name: "{{item}}"
+    state: present
+    update_cache: yes
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - gnupg-agent
+    - software-properties-common
+
+- name: add GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: add docker repository to apt
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu jammy stable
+    state: present
+
+- name: install docker
+  apt:
+    name: "{{item}}"
+    state: latest
+    update_cache: yes
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+
+- name: check docker is active
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Ensure group "docker" exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: adding monitoring2 to docker group
+  user:
+    name: monitoring2
+    groups: docker
+    append: yes
+
+- name: Install docker-compose
+  get_url:
+      url: https://github.com/docker/compose/releases/download/v2.24.2/docker-compose-linux-x86_64
+      dest: /usr/local/bin/docker-compose
+      mode: 'u+x,g+x'
+
+- name: Change file ownership, group and permissions
+  ansible.builtin.file:
+    path: /usr/local/bin/docker-compose
+    owner: monitoring2
+    group: monitoring2
+
+- name: Pull Grafana Docker image
+  docker_image:
+    name: grafana/grafana:latest
+    source: pull
+
+- name: Create a Docker network
+  docker_network:
+    name: grafana_network
+
+- name: Run Grafana container
+  docker_container:
+    name: grafana_container
+    image: grafana/grafana:latest
+    restart_policy: always
+    networks:
+      - name: grafana_network
+    ports:
+      - "3000:3000"
+    env:
+      GF_SECURITY_ADMIN_PASSWORD: "1111"
+    state: started
